@@ -9,7 +9,7 @@ public class Cache {
     int setBit;
     int tagBit;
     int associativity;
-    CacheLine cacheLines[][];
+    CacheLine cacheLines[][]; //Each row is a set. Each set might have multiple cache lines.
 
     public Cache(int blockBit, int setBit, int associativity) {
         this.blockBit = blockBit;

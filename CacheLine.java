@@ -8,9 +8,9 @@ public class CacheLine{
     byte[] data;
     boolean isValid;
     int time;
-    String tag;
+    long tag;
 
-    public CacheLine(byte[] data, int time, String tag, int blockSize){
+    public CacheLine(byte[] data, int time, long tag){
         isValid = true;
         this.time = time;
         this.tag = tag;
