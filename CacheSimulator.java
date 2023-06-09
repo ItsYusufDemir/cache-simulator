@@ -7,18 +7,22 @@
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.util.Scanner;
 
 public class CacheSimulator {
 
     private static File traceInput;
-    private static byte[] data;
+    private static byte[] ram;
     private static  Cache cache;
     private static int setBit;
     private static int associativy;
     private static int blockBit;
-    private static int numberOfMatches = 0;
+    private static int numberOfHits = 0;
+    private static int numberOfMisses = 0;
+    private static int numberOfEvictions = 0;
+    private static int time = 0;
+    private static String currentTag;
+    private static int currentSetIndex;
 
     public static void main(String args[]){
 
@@ -37,8 +41,8 @@ public class CacheSimulator {
         //Read RAM
         try (FileInputStream fileInputStream = new FileInputStream(ramFile);
              BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
-            data = new byte[(int) ramFile.length()];
-            int bytesRead = bufferedInputStream.read(data);
+            ram = new byte[(int) ramFile.length()];
+            int bytesRead = bufferedInputStream.read(ram);
 
         } catch (Exception e) {
             System.out.println(ramFile.getName() + " could not be found");
@@ -106,36 +110,116 @@ public class CacheSimulator {
 
     public static void load(String adress, int size){
 
-        int setIndex = findSetBit(adress);
-        String tag = findTag(adress);
+        findSetAndTag(adress);
+        int setIndex = currentSetIndex;
+        String tag = currentTag;
 
         for(int i = 0; i < associativy; i++){
             if(cache.cacheLines[setIndex][i] != null){
                 if(cache.cacheLines[setIndex][i].isValid){
                     if(cache.cacheLines[setIndex][i].tag.equals(tag)){
-                        numberOfMatches++;
+                        System.out.println("Hit");
+                        numberOfHits++;
+                        return;
                     }
                 }
             }
 
         }
 
+        //MISS
+        System.out.println("Miss");
+        numberOfMisses++;
+        int blockSize = (int)Math.pow(cache.blockBit, 2); //How many bytes does a block can store
+
+        byte[] data = new byte[blockSize];
+        for(int i = 0; i < blockSize; i++){
+            data[i] = (ram[hexToDecimal(adress) + i]);
+        }
+
+        //Search for empty line, if it is found, write it to that line
+        for(int i = 0; i < associativy; i++){
+            if(cache.cacheLines[setIndex][i] == null) {
+                cache.cacheLines[setIndex][i] = new CacheLine(data, time, tag, blockSize);
+                System.out.println("Place in cache set " + setIndex);
+                return;
+            }
+        }
+
+        //If not empty line, then find the victim line to be evicted
+        numberOfEvictions++;
+        int victimIndex = 0;
+        for(int i = 0; i < associativy - 1; i++){
+            if(cache.cacheLines[setIndex][i+1].time > cache.cacheLines[setIndex][i].time)
+                victimIndex = i + 1;
+        }
+
+        cache.cacheLines[setIndex][victimIndex].isValid = true;
+        cache.cacheLines[setIndex][victimIndex].tag = tag;
+        cache.cacheLines[setIndex][victimIndex].data = data;
+        cache.cacheLines[setIndex][victimIndex].time = time;
+    }
+
+    public static void store(String adress, int size, String dataAsString){
+
+        findSetAndTag(adress);
+        int setIndex = currentSetIndex;
+        String tag = currentTag;
+
+        byte[] data = convertStringToByte(dataAsString);
+
+        //HIT
+        for(int i = 0; i < associativy; i++){
+            if(cache.cacheLines[setIndex][i] != null){
+                if(cache.cacheLines[setIndex][i].isValid){
+                    if(cache.cacheLines[setIndex][i].tag.equals(tag)){
+                        System.out.println("Hit");
+                        numberOfHits++;
+
+
+                        //Change the data in cache
+                        for(int j = 0; j < data.length; j++){
+                            cache.cacheLines[setIndex][i].data[j] = data[j];
+                        }
+
+                        //Change the data in RAM
+                        for(int j = 0; j < data.length; j++){
+                            ram[hexToDecimal(adress) + j] = data[j];
+                        }
+
+                        System.out.println("Store in cache set " + setIndex + " and RAM");
+                        return;
+                    }
+                }
+
+            }
+        }
+
+        //MISS
+        System.out.println("Miss");
+        numberOfMisses++;
+        //Change the data in RAM
+        for(int j = 0; j < data.length; j++){
+            ram[hexToDecimal(adress) + j] = data[j];
+        }
+        System.out.println("Store in RAM");
+
 
     }
 
-    public static void store(String adress, int size, String data){
 
+    public static void findSetAndTag(String adress){
+        String adressInBinary = convertHexToBinary(adress);
+
+        String setIndexInBinary = adressInBinary.substring(64-blockBit-setBit,64-blockBit);
+        String tag = adressInBinary.substring(0,64-blockBit-setBit);
+
+        currentSetIndex = binaryToDecimal = setIndexInBinary;
+        currentTag = tag;
     }
 
 
-    //Bunların hepsini tek bi yerde bul
-    public static int findSetBit(String adress){
-        return 1;
-    }
 
-    public static String findTag(String adress){
-        return "";
-    }
 
 
 

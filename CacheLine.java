@@ -5,16 +5,17 @@
  */
 
 public class CacheLine{
-    String data;
+    byte[] data;
     boolean isValid;
     int time;
     String tag;
 
-    public CacheLine(String data, int time, String tag){
-        this.data = data;
-        isValid = false;
+    public CacheLine(byte[] data, int time, String tag, int blockSize){
+        isValid = true;
         this.time = time;
         this.tag = tag;
+
+        this.data = data;
     }
 
 }
